@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../api/axiosConfig";
 import Spinner from "../components/Spinner";
@@ -8,6 +8,7 @@ import { useBulkSelect } from "../hooks/useBulkSelect";
 import { t, useLanguage } from "../i18n";
 import { confirmDialog } from "../utils/confirm";
 import { exportCsv } from "../utils/export";
+import { TextField } from "../components/ui";
 import { colors, font, radius, spacing, shadow } from "../theme";
 
 export default function StockHistory() {
@@ -164,7 +165,7 @@ export default function StockHistory() {
     stockout: records.filter((r) => r.resultingQuantity <= 0).length,
   }), [records]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
+  const totalPages = Math.ceil(filteredRecords.length / PAGE_SIZE);
   const paginatedRecords = filteredRecords.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   useEffect(() => { setPage(1); }, [search, typeFilter]);
 
@@ -201,294 +202,301 @@ export default function StockHistory() {
     exportCsv("stock-history.csv", header + rows);
   };
 
-  if (loading) return (
-    <View style={styles.centerBox}>
-      <Spinner size={28} text={t("loading")} />
-    </View>
-  );
-
-  const statCards = analytics ? [
-    { f: "all", value: analytics.totalMovements, label: t("movements30"), color: colors.primary, bg: "#eff6ff", ion: "bar-chart", filter: "all" },
-    { f: "received", value: analytics.receivedRecordsCount, label: t("receivedUnits", { units: analytics.totalReceivedAll }), color: colors.success, bg: "#f0fdf4", ion: "arrow-up-circle", filter: "received" },
-    { f: "sold", value: analytics.soldRecordsCount, label: t("soldUnits", { units: analytics.totalSoldAll }), color: colors.danger, bg: "#fef2f2", ion: "arrow-down-circle", filter: "sold" },
-    { f: "stockout", value: analytics.totalStockoutEvents, label: t("stockouts"), color: colors.warning, bg: "#fffbeb", ion: "alert-triangle", filter: "stockout" },
-    { f: null, value: analytics.recent7Count, label: t("thisWeek"), color: "#7c3aed", bg: "#f5f3ff", ion: "time", filter: null },
-  ] : [];
-
-  const typeChips = [
-    { v: "all", l: t("all"), count: filterCounts.all, color: colors.primary },
-    { v: "received", l: t("received"), count: filterCounts.received, color: colors.success },
-    { v: "sold", l: t("sold"), count: filterCounts.sold, color: colors.danger },
-    { v: "stockout", l: t("stockouts"), count: filterCounts.stockout, color: colors.warning },
-  ];
-
-  const fmtDateTime = (s) => (s ? new Date(s).toLocaleString() : "—");
+  if (loading) {
+    return (
+      <View style={styles.loadingWrap}>
+        <Spinner size={28} text={t("loading")} />
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ padding: spacing.xl, paddingBottom: 60, gap: 16 }}>
+    <View style={styles.root}>
       <View style={styles.headerRow}>
-        <View style={styles.titleLeft}>
-          <Ionicons name="time" size={26} color={colors.primary} />
+        <View style={styles.headerLeft}>
+          <Ionicons name="time-outline" size={24} color={colors.primary} />
           <View>
-            <Text style={styles.title}>{t("stockHistoryTitle")}</Text>
-            <Text style={styles.subtitle}>{t("stockHistorySubtitle", { m: records.length, p: products.length })}</Text>
+            <Text style={styles.headerTitle}>{t("stockHistoryTitle")}</Text>
+            <Text style={styles.headerSub}>{t("stockHistorySubtitle", { m: records.length, p: products.length })}</Text>
           </View>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-          <Pressable onPress={exportCSV} style={styles.csvBtn}>
+        <View style={styles.headerRight}>
+          <Pressable onPress={exportCSV} style={styles.exportBtn} hitSlop={6}>
             <Ionicons name="download" size={14} color={colors.slate500} />
-            <Text style={styles.csvBtnText}>{t("exportCsv")}</Text>
+            <Text style={styles.exportBtnText}>{t("exportCsv")}</Text>
           </Pressable>
           {bulk.mode && (
-            <Pressable onPress={deleteAll} disabled={records.length === 0} style={[styles.deleteAllBtn, records.length === 0 && styles.deleteAllBtnDisabled]}>
-              <Ionicons name="trash" size={14} color={records.length === 0 ? colors.slate400 : colors.danger} />
-              <Text style={[styles.deleteAllBtnText, { color: records.length === 0 ? colors.slate400 : colors.danger }]}>{t("deleteAllRecords")}</Text>
+            <Pressable onPress={deleteAll} disabled={records.length === 0} style={[styles.deleteAllBtn, records.length === 0 && styles.deleteAllBtnDisabled]} hitSlop={6}>
+              <Ionicons name="trash-outline" size={14} color={records.length === 0 ? colors.slate300 : colors.danger} />
+              <Text style={[styles.deleteAllText, records.length === 0 && styles.deleteAllTextDisabled]}>{t("deleteAllRecords")}</Text>
             </Pressable>
           )}
         </View>
       </View>
 
-      {analytics && (
-        <>
-          <View style={styles.statGrid}>
-            {statCards.map((s) => {
-              const isActive = s.f && typeFilter === s.f;
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+        {analytics && (
+          <>
+            <View style={styles.statGrid}>
+              <IconStat
+                icon="bar-chart" iconBg="#eff6ff" iconColor="#2563eb"
+                value={analytics.totalMovements} label={t("movements30")}
+                topColor={typeFilter === "all" ? "#2563eb" : "#e2e8f0"}
+                onPress={() => setTypeFilter("all")}
+              />
+              <IconStat
+                icon="arrow-up-circle" iconBg="#f0fdf4" iconColor="#16a34a"
+                value={analytics.receivedRecordsCount} label={t("receivedUnits", { units: analytics.totalReceivedAll })}
+                topColor={typeFilter === "received" ? "#16a34a" : "#e2e8f0"}
+                onPress={() => setTypeFilter("received")}
+              />
+              <IconStat
+                icon="arrow-down-circle" iconBg="#fef2f2" iconColor="#dc2626"
+                value={analytics.soldRecordsCount} label={t("soldUnits", { units: analytics.totalSoldAll })}
+                topColor={typeFilter === "sold" ? "#dc2626" : "#e2e8f0"}
+                onPress={() => setTypeFilter("sold")}
+              />
+              <IconStat
+                icon="alert-triangle" iconBg="#fffbeb" iconColor="#f59e0b"
+                value={analytics.totalStockoutEvents} label={t("stockouts")}
+                topColor={typeFilter === "stockout" ? "#f59e0b" : "#e2e8f0"}
+                onPress={() => setTypeFilter("stockout")}
+              />
+              <IconStat
+                icon="time-outline" iconBg="#f5f3ff" iconColor="#7c3aed"
+                value={analytics.recent7Count} label={t("thisWeek")}
+                topColor="#e2e8f0"
+              />
+            </View>
+
+            <View style={styles.miniRow}>
+              <MiniTable
+                title={t("frequentlyOutOfStock")} icon="flame" iconColor="#dc2626"
+                items={analytics.frequentOut} emptyText={t("noStockoutEvents")}
+                columns={[
+                  { key: "name", label: t("product"), flex: 1.4 },
+                  { key: "outOfStockEvents", label: t("stockouts"), align: "center", render: (v) => <Text style={[styles.miniTdValue, styles.redStrong]}>{v}</Text> },
+                  { key: "sold", label: t("totalSold"), align: "center" },
+                ]}
+              />
+              <MiniTable
+                title={t("topMovingProducts")} icon="trending-down" iconColor="#2563eb"
+                items={analytics.topMovers} emptyText={t("noMovementData")}
+                columns={[
+                  { key: "name", label: t("product"), flex: 1.4 },
+                  { key: "sold", label: t("sold"), align: "center", render: (v) => <Text style={[styles.miniTdValue, styles.soldSign]}>-{v}</Text> },
+                  { key: "received", label: t("incoming"), align: "center", render: (v) => <Text style={[styles.miniTdValue, styles.receivedSign]}>+{v}</Text> },
+                ]}
+              />
+            </View>
+
+            <View style={styles.miniRow}>
+              <MiniTable
+                title={t("expiredProducts")} icon="close-circle" iconColor="#7c1d1e"
+                items={analytics.expiredProducts} emptyText={t("noExpiredProducts")}
+                columns={[
+                  { key: "name", label: t("product"), flex: 1.2 },
+                  { key: "currentQty", label: t("qty"), align: "center", render: (v) => <Text style={[styles.miniTdValue, styles.redStrong]}>{v}</Text> },
+                  { key: "daysOverdue", label: t("overdue"), align: "center", render: (v) => <Text style={[styles.miniTdValue, styles.overdueText]}>{v}d</Text> },
+                  { key: "expiryDate", label: t("expiry"), align: "center", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+                ]}
+              />
+              <MiniTable
+                title={t("expiringSoon7days")} icon="calendar" iconColor="#d97706"
+                items={analytics.expiringSoon} emptyText={t("noExpiringSoon")}
+                columns={[
+                  { key: "name", label: t("product"), flex: 1.2 },
+                  { key: "currentQty", label: t("qty"), align: "center", render: (v) => <Text style={[styles.miniTdValue, styles.slateText]}>{v}</Text> },
+                  { key: "daysLeft", label: t("daysLeft"), align: "center", render: (v) => <Text style={[styles.miniTdValue, styles.daysLeftText]}>{v}d</Text> },
+                  { key: "expiryDate", label: t("expiry"), align: "center", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+                ]}
+              />
+            </View>
+          </>
+        )}
+
+        <View style={styles.filterRow}>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={15} color={colors.slate400} style={styles.searchIcon} />
+            <TextField
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t("searchProductsOrTypes")}
+              containerStyle={styles.searchInput}
+              inputStyle={styles.searchInputField}
+            />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+            {[
+              { v: "all", l: t("all"), count: filterCounts.all, color: "#2563eb" },
+              { v: "received", l: t("received"), count: filterCounts.received, color: "#16a34a" },
+              { v: "sold", l: t("sold"), count: filterCounts.sold, color: "#dc2626" },
+              { v: "stockout", l: t("stockouts"), count: filterCounts.stockout, color: "#f59e0b" },
+            ].map((f) => {
+              const active = typeFilter === f.v;
               return (
-                <Pressable
-                  key={s.label}
-                  disabled={!s.filter}
-                  onPress={() => s.filter && setTypeFilter(s.filter)}
-                  style={[styles.statCard, isActive && { backgroundColor: s.bg }]}
-                >
-                  <View style={[styles.statTop, { background: isActive ? s.color : colors.slate200 }]} />
-                  <View style={[styles.statIconBox, { background: s.bg }]}>
-                    <Ionicons name={s.ion} size={18} color={s.color} />
-                  </View>
-                  <View style={{ flexShrink: 1 }}>
-                    <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-                    <Text style={styles.statLabel}>{s.label}</Text>
-                  </View>
+                <Pressable key={f.v} onPress={() => setTypeFilter(f.v)} style={[styles.chip, active ? { borderWidth: 2, borderColor: f.color } : { borderWidth: 1, borderColor: colors.slate200 }]} hitSlop={4}>
+                  <Text style={[styles.chipText, { color: active ? f.color : colors.slate500 }]}>
+                    {f.l} ({f.count})
+                  </Text>
                 </Pressable>
               );
             })}
-          </View>
-
-          <View style={styles.miniRow}>
-            <MiniTable
-              title={t("frequentlyOutOfStock")}
-              ion="flame"
-              ionColor={colors.danger}
-              items={analytics.frequentOut}
-              columns={[
-                { key: "name", label: t("product") },
-                { key: "outOfStockEvents", label: t("stockouts"), align: "center", render: (v) => <Text style={{ color: colors.danger, fontWeight: "700" }}>{v}</Text> },
-                { key: "sold", label: t("totalSold"), align: "center" },
-              ]}
-              emptyText={t("noStockoutEvents")}
-            />
-            <MiniTable
-              title={t("topMovingProducts")}
-              ion="trending-down"
-              ionColor={colors.primary}
-              items={analytics.topMovers}
-              columns={[
-                { key: "name", label: t("product") },
-                { key: "sold", label: t("sold"), align: "center", render: (v) => <Text style={{ color: colors.danger, fontWeight: "600" }}>-{v}</Text> },
-                { key: "received", label: t("incoming"), align: "center", render: (v) => <Text style={{ color: colors.success, fontWeight: "600" }}>+{v}</Text> },
-              ]}
-              emptyText={t("noMovementData")}
-            />
-          </View>
-
-          <View style={styles.miniRow}>
-            <MiniTable
-              title={t("expiredProducts")}
-              ion="close-circle"
-              ionColor="#7c1d1e"
-              items={analytics.expiredProducts}
-              columns={[
-                { key: "name", label: t("product") },
-                { key: "currentQty", label: t("qty"), align: "center", render: (v) => <Text style={{ color: "#7c1d1e", fontWeight: "700" }}>{v}</Text> },
-                { key: "daysOverdue", label: t("overdue"), align: "center", render: (v) => <Text style={{ color: colors.danger, fontWeight: "600" }}>{v}d</Text> },
-                { key: "expiryDate", label: t("expiry"), align: "center", render: (v) => <Text style={styles.miniDateText}>{v ? new Date(v).toLocaleDateString() : "—"}</Text> },
-              ]}
-              emptyText={t("noExpiredProducts")}
-            />
-            <MiniTable
-              title={t("expiringSoon7days")}
-              ion="calendar"
-              ionColor={colors.warning}
-              items={analytics.expiringSoon}
-              columns={[
-                { key: "name", label: t("product") },
-                { key: "currentQty", label: t("qty"), align: "center", render: (v) => <Text style={{ fontWeight: "600" }}>{v}</Text> },
-                { key: "daysLeft", label: t("daysLeft"), align: "center", render: (v) => <Text style={{ color: colors.warning, fontWeight: "600" }}>{v}d</Text> },
-                { key: "expiryDate", label: t("expiry"), align: "center", render: (v) => <Text style={styles.miniDateText}>{v ? new Date(v).toLocaleDateString() : "—"}</Text> },
-              ]}
-              emptyText={t("noExpiringSoon")}
-            />
-          </View>
-        </>
-      )}
-
-      <View style={styles.toolbar}>
-        <View style={{ flex: 1, minWidth: 180, maxWidth: 400, position: "relative" }}>
-          <View style={{ position: "absolute", left: 12, top: 13, zIndex: 1 }}>
-            <Ionicons name="search" size={15} color={colors.slate400} />
-          </View>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder={t("searchProductsOrTypes")}
-            placeholderTextColor={colors.slate400}
-            style={styles.searchInput}
-          />
+          </ScrollView>
+          {bulk.mode && (
+            <BulkBar count={bulk.selected.length} allSelected={bulk.allSelected} onSelectAll={bulk.toggleAll} onDelete={deleteSelected} deleteLabel={t("deleteSelected")} />
+          )}
         </View>
-        <View style={styles.chipRow}>
-          {typeChips.map((f) => (
-            <Pressable
-              key={f.v}
-              onPress={() => setTypeFilter(f.v)}
-              style={[styles.chip, { borderColor: typeFilter === f.v ? f.color : colors.slate200, background: typeFilter === f.v ? `${f.color}10` : "#fff" }]}
-            >
-              <Text style={{ fontSize: font.xs, fontWeight: "600", color: typeFilter === f.v ? f.color : colors.slate500 }}>
-                {f.l} ({f.count})
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {bulk.mode && (
-          <BulkBar count={bulk.selected.length} allSelected={bulk.allSelected} onSelectAll={bulk.toggleAll} onDelete={deleteSelected} deleteLabel={t("deleteSelected")} />
-        )}
-      </View>
 
-      <View style={styles.tableCard}>
-        <ScrollView horizontal>
-          <View style={{ minWidth: 640 }}>
-            <View style={styles.thead}>
-              {bulk.mode && (
-                <Pressable style={[styles.th, styles.centerCell, { width: 32 }]} onPress={bulk.toggleAll}>
-                  <Ionicons name={bulk.allSelected ? "checkbox" : "square-outline"} size={16} color={bulk.allSelected ? colors.primary : colors.slate400} />
-                </Pressable>
-              )}
-              <View style={[styles.th, { flex: 1.4 }]}><Text style={styles.thText}>{t("product")}</Text></View>
-              <View style={[styles.th, styles.centerCell, { flex: 0.7 }]}><Text style={styles.thText}>{t("change")}</Text></View>
-              <View style={[styles.th, styles.centerCell, { flex: 0.7 }]}><Text style={styles.thText}>{t("resulting")}</Text></View>
-              <View style={[styles.th, styles.centerCell, { flex: 0.8 }]}><Text style={styles.thText}>{t("type")}</Text></View>
-              <View style={[styles.th, styles.centerCell, { flex: 0.8 }]}><Text style={styles.thText}>{t("status")}</Text></View>
-              <View style={[styles.th, { flex: 1.1 }]}><Text style={styles.thText}>{t("date")}</Text></View>
-            </View>
-
-            {filteredRecords.length === 0 ? (
-              <View style={[styles.emptyCell, { alignItems: "center", flexDirection: "column", gap: 6 }]}>
-                <Ionicons name="cube-outline" size={32} style={{ opacity: 0.4 }} color={colors.slate400} />
-                <Text style={styles.emptyText}>{records.length === 0 ? t("noStockHistoryYet") : t("noRecordsMatchFilter")}</Text>
+        <View style={styles.tableCard}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.tableInner}>
+              <View style={styles.trHead}>
+                {bulk.mode && (
+                  <View style={[styles.td, styles.colCheck]}>
+                    <Pressable onPress={bulk.toggleAll} hitSlop={8}>
+                      <Ionicons name={bulk.allSelected ? "checkbox" : "square-outline"} size={16} color={bulk.allSelected ? colors.primary : colors.slate400} />
+                    </Pressable>
+                  </View>
+                )}
+                <Text style={[styles.th, styles.colProduct]}>{t("product")}</Text>
+                <Text style={[styles.th, styles.colCenter]}>{t("change")}</Text>
+                <Text style={[styles.th, styles.colCenter]}>{t("resulting")}</Text>
+                <Text style={[styles.th, styles.colCenter]}>{t("type")}</Text>
+                <Text style={[styles.th, styles.colCenter]}>{t("status")}</Text>
+                <Text style={[styles.th, styles.colDate]}>{t("date")}</Text>
               </View>
-            ) : paginatedRecords.map((r) => {
+
+              {filteredRecords.length === 0 ? (
+                <View style={styles.emptyRow}>
+                  <Ionicons name="cube-outline" size={32} color={colors.slate300} style={{ marginBottom: 8 }} />
+                  <Text style={styles.emptyText}>{records.length === 0 ? t("noStockHistoryYet") : t("noRecordsMatchFilter")}</Text>
+                </View>
+              ) : paginatedRecords.map((r) => {
                 const isOut = r.resultingQuantity <= 0;
                 const isLow = r.resultingQuantity > 0 && r.resultingQuantity <= 5;
                 const isSold = r.transactionType === "Sold";
                 return (
-                  <View key={r.id} style={[styles.tr, isOut && { background: "#fef2f2" }]} {...bulk.rowProps(r.id)}>
+                  <View key={r.id} style={[styles.tr, isOut && styles.trOut]} {...bulk.rowProps(r.id)}>
                     {bulk.mode && (
-                      <Pressable style={[styles.td, styles.centerCell, { width: 32 }]} onPress={() => bulk.toggle(r.id)}>
-                        <Ionicons name={bulk.selectedSet.has(r.id) ? "checkbox" : "square-outline"} size={16} color={bulk.selectedSet.has(r.id) ? colors.primary : colors.slate400} />
-                      </Pressable>
+                      <View style={[styles.td, styles.colCheck]}>
+                        <Pressable onPress={() => bulk.toggle(r.id)} hitSlop={8}>
+                          <Ionicons name={bulk.selectedSet.has(r.id) ? "checkbox" : "square-outline"} size={16} color={bulk.selectedSet.has(r.id) ? colors.primary : colors.slate400} />
+                        </Pressable>
+                      </View>
                     )}
-                    <View style={[styles.td, { flex: 1.4 }]}>
-                      <Text style={styles.nameCell}>{getProductName(r)}</Text>
-                    </View>
-                    <View style={[styles.td, styles.centerCell, { flex: 0.7 }]}>
-                      <Text style={[styles.delta, { color: isSold ? colors.danger : colors.success }]}>
-                        {isSold ? `-${Math.abs(r.quantityChange)}` : `+${Math.abs(r.quantityChange)}`}
-                      </Text>
-                    </View>
-                    <View style={[styles.td, styles.centerCell, { flex: 0.7 }]}>
-                      <Text style={[styles.resulting, { color: isOut ? colors.danger : isLow ? colors.warning : colors.slate700, fontWeight: isOut || isLow ? "700" : "400" }]}>
-                        {r.resultingQuantity}
-                      </Text>
-                    </View>
-                    <View style={[styles.td, styles.centerCell, { flex: 0.8 }]}>
-                      <View style={[styles.typePill, { background: isSold ? "#fef2f2" : "#f0fdf4" }]}>
-                        <Text style={[styles.typePillText, { color: isSold ? colors.danger : colors.success }]}>{r.transactionType || "—"}</Text>
+                    <Text style={[styles.td, styles.colProduct, styles.productName]} numberOfLines={1}>{getProductName(r)}</Text>
+                    <Text style={[styles.td, styles.colCenter, styles.changeQty, isSold ? styles.soldSign : styles.receivedSign]}>
+                      {isSold ? `-${Math.abs(r.quantityChange)}` : `+${Math.abs(r.quantityChange)}`}
+                    </Text>
+                    <Text style={[styles.td, styles.colCenter, isOut ? styles.outStrong : isLow ? styles.lowStrong : styles.resultNormal]}>
+                      {r.resultingQuantity}
+                    </Text>
+                    <View style={[styles.tdWrap, styles.colCenter]}>
+                      <View style={[styles.typePill, isSold ? styles.typeSold : styles.typeReceived]}>
+                        <Text style={[styles.typePillText, { color: isSold ? "#dc2626" : "#16a34a" }]}>{r.transactionType || "—"}</Text>
                       </View>
                     </View>
-                    <View style={[styles.td, styles.centerCell, { flex: 0.8 }]}>
+                    <View style={[styles.tdWrap, styles.colCenter]}>
                       {isOut ? (
-                        <View style={[styles.statusPill, { background: "#fef2f2" }]}>
-                          <Ionicons name="close-circle" size={10} color={colors.danger} />
-                          <Text style={[styles.statusPillText, { color: colors.danger }]}>{t("statusOut")}</Text>
+                        <View style={[styles.statusPill, styles.statusByBlendOut]}>
+                          <Ionicons name="close-circle" size={10} color="#dc2626" />
+                          <Text style={[styles.statusPillText, { color: "#dc2626" }]}>{t("statusOut")}</Text>
                         </View>
                       ) : isLow ? (
-                        <View style={[styles.statusPill, { background: "#fffbeb" }]}>
-                          <Ionicons name="alert-triangle" size={10} color={colors.warning} />
-                          <Text style={[styles.statusPillText, { color: colors.warning }]}>{t("statusLow")}</Text>
+                        <View style={[styles.statusPill, styles.statusByBlendWarn]}>
+                          <Ionicons name="alert-triangle" size={10} color="#d97706" />
+                          <Text style={[styles.statusPillText, { color: "#d97706" }]}>{t("statusLow")}</Text>
                         </View>
                       ) : (
-                        <View style={[styles.statusPill, { background: "#f0fdf4" }]}>
-                          <Ionicons name="checkmark-circle" size={10} color={colors.success} />
-                          <Text style={[styles.statusPillText, { color: colors.success }]}>{t("statusOk")}</Text>
+                        <View style={[styles.statusPill, styles.statusByBlendOk]}>
+                          <Ionicons name="checkmark-circle" size={10} color="#16a34a" />
+                          <Text style={[styles.statusPillText, { color: "#16a34a" }]}>{t("statusOk")}</Text>
                         </View>
                       )}
                     </View>
-                    <View style={[styles.td, { flex: 1.1 }]}>
-                      <Text style={styles.dateCell}>{fmtDateTime(r.createdAt)}</Text>
-                    </View>
+                    <Text style={[styles.td, styles.colDate, styles.dateText]}>
+                      {r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}
+                    </Text>
                   </View>
                 );
               })}
-          </View>
-        </ScrollView>
-        {totalPages > 1 && (
-          <View style={styles.paginationBar}>
-            <Pressable onPress={() => setPage((p) => p - 1)} disabled={page <= 1} style={[styles.pageNav, page <= 1 && styles.pageNavDisabled]}>
-              <Ionicons name="chevron-back" size={14} color={page <= 1 ? colors.slate400 : colors.slate700} />
-              <Text style={[styles.pageNavText, { color: page <= 1 ? colors.slate400 : colors.slate700 }]}>{t("prev")}</Text>
-            </Pressable>
-            {(() => {
-              const pages = [];
-              const start = Math.max(1, page - 2);
-              const end = Math.min(totalPages, page + 2);
-              for (let i = start; i <= end; i++) pages.push(i);
-              return pages.map((i) => (
-                <Pressable key={i} onPress={() => setPage(i)} style={[styles.pageNum, page === i && styles.pageNumActive]}>
-                  <Text style={{ fontSize: font.sm, fontWeight: page === i ? "700" : "500", color: page === i ? "#fff" : colors.slate700 }}>{i}</Text>
-                </Pressable>
-              ));
-            })()}
-            <Pressable onPress={() => setPage((p) => p + 1)} disabled={page >= totalPages} style={[styles.pageNav, page >= totalPages && styles.pageNavDisabled]}>
-              <Text style={[styles.pageNavText, { color: page >= totalPages ? colors.slate400 : colors.slate700 }]}>{t("next")}</Text>
-              <Ionicons name="chevron-forward" size={14} color={page >= totalPages ? colors.slate400 : colors.slate700} />
-            </Pressable>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+            </View>
+          </ScrollView>
+
+          {totalPages > 1 && (
+            <View style={styles.pager}>
+              <Pressable disabled={page <= 1} onPress={() => setPage((p) => p - 1)} style={[styles.pageNav, page <= 1 && styles.pageNavDisabled]} hitSlop={6}>
+                <Ionicons name="chevron-back" size={14} color={page <= 1 ? colors.slate300 : colors.slate700} />
+                <Text style={[styles.pageNavText, page <= 1 && styles.pageNavTextDisabled]}>{t("prev")}</Text>
+              </Pressable>
+              {(() => {
+                const pages = [];
+                const start = Math.max(1, page - 2);
+                const end = Math.min(totalPages, page + 2);
+                for (let i = start; i <= end; i++) {
+                  pages.push(
+                    <Pressable key={i} onPress={() => setPage(i)} style={[styles.pageNum, page === i && styles.pageNumActive]} hitSlop={4}>
+                      <Text style={[styles.pageNumText, page === i && styles.pageNumTextActive]}>{i}</Text>
+                    </Pressable>
+                  );
+                }
+                return pages;
+              })()}
+              <Pressable disabled={page >= totalPages} onPress={() => setPage((p) => p + 1)} style={[styles.pageNav, page >= totalPages && styles.pageNavDisabled]} hitSlop={6}>
+                <Text style={[styles.pageNavText, page >= totalPages && styles.pageNavTextDisabled]}>{t("next")}</Text>
+                <Ionicons name="chevron-forward" size={14} color={page >= totalPages ? colors.slate300 : colors.slate700} />
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
-function MiniTable({ title, ion, ionColor, items, columns, emptyText }) {
+function IconStat({ icon, iconBg, iconColor, value, label, topColor, onPress }) {
+  const content = (
+    <>
+      <View style={[styles.statIcon, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
+      </View>
+      <View style={styles.statTextWrap}>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+      </View>
+    </>
+  );
+  if (onPress) {
+    return <Pressable onPress={onPress} style={[styles.statCard, { borderTopColor: topColor }]}>{content}</Pressable>;
+  }
+  return <View style={[styles.statCard, { borderTopColor: topColor }]}>{content}</View>;
+}
+
+function MiniTable({ title, icon, iconColor, items, columns, emptyText }) {
   return (
-    <View style={styles.miniTable}>
-      <View style={styles.miniTableHeader}>
-        <Ionicons name={ion} size={15} color={ionColor} />
-        <Text style={styles.miniTableTitle}>{title}</Text>
+    <View style={styles.miniCard}>
+      <View style={styles.miniHead}>
+        <Ionicons name={icon} size={15} color={iconColor} />
+        <Text style={styles.miniTitle} numberOfLines={1}>{title}</Text>
       </View>
       {items.length === 0 ? (
-        <View style={styles.miniEmpty}><Text style={styles.miniEmptyText}>{emptyText}</Text></View>
+        <View style={styles.miniEmpty}>
+          <Text style={styles.miniEmptyText}>{emptyText}</Text>
+        </View>
       ) : (
-        <View style={{ width: "100%" }}>
-          <View style={[styles.tr, { background: colors.slate50 }]}>
+        <View>
+          <View style={styles.miniRowHeader}>
             {columns.map((c) => (
-              <Text key={c.key} style={[styles.miniTh, c.align === "center" && { textAlign: "center" }, { flex: c.align === "center" ? 0.8 : 1.4 }]}>{c.label}</Text>
+              <Text key={c.key} style={[styles.miniTh, c.align === "center" && styles.mc, c.flex ? { flex: c.flex } : null]} numberOfLines={1}>{c.label}</Text>
             ))}
           </View>
           {items.map((item, i) => (
-            <View key={i} style={[styles.tr, { background: "transparent", minHeight: 34 }]}>
+            <View key={i} style={styles.miniRow}>
               {columns.map((c) => (
-                <View key={c.key} style={[styles.miniTd, c.align === "center" && styles.centerCell, { flex: c.align === "center" ? 0.8 : 1.4 }]}>
-                  {c.render ? c.render(item[c.key]) : <Text style={{ fontWeight: c.key === "name" ? "600" : "400", color: colors.slate700 }}>{item[c.key]}</Text>}
-                </View>
+                <Text key={c.key} style={[styles.miniTd, c.align === "center" && styles.mc, c.key === "name" && styles.miniName, c.flex ? { flex: c.flex } : null]} numberOfLines={1}>
+                  {c.render ? c.render(item[c.key]) : item[c.key]}
+                </Text>
               ))}
             </View>
           ))}
@@ -499,57 +507,98 @@ function MiniTable({ title, ion, ionColor, items, columns, emptyText }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.slate50 },
-  centerBox: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 90 },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: spacing.md },
-  titleLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  title: { fontSize: 22, fontWeight: "700", color: colors.slate900 },
-  subtitle: { fontSize: font.xs, color: colors.slate400 },
-  csvBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 16, background: "#fff", borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.md },
-  csvBtnText: { fontSize: font.xs, fontWeight: "600", color: colors.slate500 },
-  deleteAllBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 16, background: "#fef2f2", borderWidth: 1, borderColor: "#fecaca", borderRadius: radius.md },
-  deleteAllBtnDisabled: { background: "#f3f4f6", borderColor: colors.slate200 },
-  deleteAllBtnText: { fontSize: font.xs, fontWeight: "600" },
-  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  statCard: { background: "#fff", borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.lg, padding: 16, flexBasis: "45%", flexGrow: 1, minWidth: 150, flexDirection: "row", alignItems: "center", gap: spacing.md, overflow: "hidden" },
-  statTop: { position: "absolute", top: 0, left: 0, right: 0, height: 3 },
-  statIconBox: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  statValue: { fontSize: 20, fontWeight: "800" },
+  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", height: 400 },
+
+  root: { flex: 1, padding: spacing.lg, backgroundColor: colors.slate50 },
+
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.lg },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headerTitle: { fontSize: font.xl, fontWeight: "700", color: colors.slate900 },
+  headerSub: { fontSize: font.xs, color: colors.slate400 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  exportBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.md },
+  exportBtnText: { fontSize: font.xs, fontWeight: "600", color: colors.slate500 },
+  deleteAllBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: "#fef2f2", borderWidth: 1, borderColor: "#fecaca", borderRadius: radius.md },
+  deleteAllBtnDisabled: { backgroundColor: colors.slate100, borderColor: colors.slate300 },
+  deleteAllText: { fontSize: font.xs, fontWeight: "600", color: colors.danger },
+  deleteAllTextDisabled: { color: colors.slate300 },
+
+  scroll: { flex: 1 },
+  scrollBody: { paddingBottom: spacing.xl, gap: spacing.lg },
+
+  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  statCard: { flex: 1, minWidth: "30%", backgroundColor: colors.white, borderWidth: 1, borderTopWidth: 3, borderColor: colors.slate200, borderRadius: 10, padding: spacing.lg, flexDirection: "row", alignItems: "center", gap: 12 },
+  statIcon: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  statTextWrap: { flexShrink: 1 },
+  statValue: { fontSize: 20, fontWeight: "800", color: colors.slate900 },
   statLabel: { fontSize: font.xs, color: colors.slate400, fontWeight: "500" },
-  miniRow: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
-  miniTable: { flex: 1, minWidth: 260, background: "#fff", borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.lg, overflow: "hidden" },
-  miniTableHeader: { paddingVertical: 12, paddingHorizontal: 16, background: colors.slate50, borderBottomWidth: 1, borderBottomColor: colors.slate200, flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  miniTableTitle: { fontSize: font.sm, fontWeight: "700", color: colors.slate900 },
-  miniEmpty: { padding: 24, alignItems: "center" },
-  miniEmptyText: { color: colors.slate400, fontSize: font.xs },
-  miniTh: { paddingVertical: 8, paddingHorizontal: 12, fontSize: font.xs, fontWeight: "700", color: colors.slate500, textTransform: "uppercase" },
-  miniTd: { paddingVertical: 8, paddingHorizontal: 12 },
-  miniDateText: { fontSize: font.xs, color: colors.slate500 },
-  toolbar: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.md },
-  searchInput: { flex: 1, borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.md, fontSize: font.sm, paddingVertical: 8, paddingLeft: 36, paddingRight: 12, background: "#fff" },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: radius.sm, borderWidth: 1, minWidth: 70, alignItems: "center" },
-  tableCard: { background: "#fff", borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.lg, overflow: "hidden", flexGrow: 0 },
-  thead: { flexDirection: "row", background: "#f8fafc", borderBottomWidth: 2, borderBottomColor: colors.slate200 },
-  th: { paddingVertical: 8, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" },
-  thText: { fontSize: font.xs, fontWeight: "700", color: colors.slate500, textTransform: "uppercase" },
-  tr: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#f1f5f9", minHeight: 46 },
-  td: { paddingVertical: 8, paddingHorizontal: 12, justifyContent: "center" },
-  centerCell: { alignItems: "center" },
-  nameCell: { fontWeight: "600", color: colors.slate800, fontSize: font.sm },
-  delta: { fontWeight: "700", fontSize: font.sm },
-  resulting: { fontSize: font.sm },
-  typePill: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 99 },
-  typePillText: { fontSize: font.xs, fontWeight: "600" },
-  statusPill: { flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 2, paddingHorizontal: 8, borderRadius: 99 },
-  statusPillText: { fontSize: font.xs, fontWeight: "600" },
-  dateCell: { fontSize: font.xs, color: colors.slate400 },
-  emptyCell: { padding: 40, justifyContent: "center" },
+
+  miniRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
+  miniCard: { flex: 1, minWidth: "46%", backgroundColor: colors.white, borderWidth: 1, borderColor: colors.slate200, borderRadius: 10, overflow: "hidden" },
+  miniHead: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: colors.slate50, borderBottomWidth: 1, borderBottomColor: colors.slate200 },
+  miniTitle: { fontSize: font.sm, fontWeight: "700", color: colors.slate900, flex: 1, marginRight: 8 },
+  miniEmpty: { padding: spacing.xl, alignItems: "center" },
+  miniEmptyText: { color: colors.slate400, fontSize: font.xs, textAlign: "center" },
+  miniRowHeader: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.slate100 },
+  miniRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.slate50 },
+  miniTh: { paddingVertical: 8, paddingHorizontal: 8, fontSize: 10, fontWeight: "700", color: colors.slate500, textTransform: "uppercase", letterSpacing: 0.4 },
+  miniTd: { paddingVertical: 8, paddingHorizontal: 8, fontSize: font.xs, color: colors.slate700 },
+  miniName: { fontWeight: "600" },
+  miniTdValue: { fontWeight: "600" },
+  mc: { textAlign: "center", minWidth: 74 },
+  redStrong: { color: "#dc2626", fontWeight: "700" },
+  soldSign: { color: "#dc2626", fontWeight: "600" },
+  receivedSign: { color: "#16a34a", fontWeight: "600" },
+  overdueText: { color: "#dc2626", fontWeight: "600" },
+  daysLeftText: { color: "#d97706", fontWeight: "600" },
+  slateText: { color: colors.slate700, fontWeight: "600" },
+
+  filterRow: { gap: spacing.sm },
+  searchWrap: { position: "relative", maxWidth: 400 },
+  searchIcon: { position: "absolute", left: 12, top: 13, zIndex: 1 },
+  searchInput: { marginBottom: 0 },
+  searchInputField: { paddingLeft: 34 },
+  chipsRow: { flexDirection: "row", gap: 6 },
+  chip: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: radius.sm, backgroundColor: colors.white },
+  chipText: { fontSize: font.xs, fontWeight: "600" },
+
+  tableCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.lg, overflow: "hidden" },
+  tableInner: { minWidth: 720 },
+  trHead: { flexDirection: "row", backgroundColor: colors.slate50, borderBottomWidth: 2, borderBottomColor: colors.slate200 },
+  tr: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.slate100, alignItems: "center" },
+  trOut: { backgroundColor: colors.dangerLight },
+  th: { fontSize: 10, fontWeight: "700", color: colors.slate500, textTransform: "uppercase", letterSpacing: 0.4, paddingVertical: 10, paddingHorizontal: 8 },
+  td: { paddingVertical: 10, paddingHorizontal: 8 },
+  tdWrap: { paddingVertical: 10, paddingHorizontal: 8, justifyContent: "center" },
+  colCheck: { width: 36, alignItems: "center", justifyContent: "center" },
+  colProduct: { flex: 1.4, minWidth: 150 },
+  colCenter: { width: 96, textAlign: "center" },
+  colDate: { width: 170 },
+  productName: { fontWeight: "600" },
+  changeQty: { fontWeight: "700" },
+  outStrong: { color: "#dc2626", fontWeight: "700", textAlign: "center" },
+  lowStrong: { color: "#d97706", fontWeight: "700", textAlign: "center" },
+  resultNormal: { color: colors.slate700, textAlign: "center" },
+  typePill: { alignSelf: "center", paddingVertical: 2, paddingHorizontal: 10, borderRadius: 99 },
+  typeSold: { backgroundColor: "#fef2f2" },
+  typeReceived: { backgroundColor: "#f0fdf4" },
+  typePillText: { fontSize: 10, fontWeight: "600" },
+  statusPill: { alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 2, paddingHorizontal: 8, borderRadius: 99 },
+  statusByBlendOut: { backgroundColor: "#fef2f2" },
+  statusByBlendWarn: { backgroundColor: "#fffbeb" },
+  statusByBlendOk: { backgroundColor: "#f0fdf4" },
+  statusPillText: { fontSize: 10, fontWeight: "600" },
+  dateText: { color: colors.slate400, fontSize: font.xs },
+  emptyRow: { paddingVertical: 48, alignItems: "center" },
   emptyText: { color: colors.slate400, fontSize: font.sm },
-  paginationBar: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 14 },
-  pageNav: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: "#d1d5db", borderRadius: radius.sm, background: "#fff" },
-  pageNavDisabled: { background: "#f3f4f6" },
-  pageNavText: { fontSize: font.sm, fontWeight: "500" },
-  pageNum: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#d1d5db", borderRadius: radius.sm, background: "#fff" },
+
+  pager: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 14 },
+  pageNav: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.slate300, borderRadius: radius.sm, backgroundColor: colors.white },
+  pageNavDisabled: { backgroundColor: colors.slate100 },
+  pageNavText: { fontSize: font.sm, fontWeight: "500", color: colors.slate700 },
+  pageNavTextDisabled: { color: colors.slate300 },
+  pageNum: { width: 32, height: 32, borderWidth: 1, borderColor: colors.slate300, borderRadius: radius.sm, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
   pageNumActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pageNumText: { fontSize: font.sm, fontWeight: "500", color: colors.slate700 },
+  pageNumTextActive: { color: colors.white, fontWeight: "700" },
 });
