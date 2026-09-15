@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, font, radius } from "../../theme";
+import { colors, font, radius } from "../theme";
 
 export default function BulkBar({ count, allSelected, onSelectAll, onDelete, deleteLabel = "Delete" }) {
   return (

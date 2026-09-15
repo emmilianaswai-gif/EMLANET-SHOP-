@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { colors, font, radius } from "../../theme";
+import { colors, font, radius } from "../theme";
 
 export default function Footer() {
   const navigation = useNavigation();

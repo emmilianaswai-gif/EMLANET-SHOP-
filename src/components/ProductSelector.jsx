@@ -29,7 +29,7 @@ export default function ProductSelector({
     });
   }, []);
 
-  const getQty = (p) => stockMap[p.id] ?? Number(p.quantity) || 0;
+  const getQty = (p) => stockMap[p.id] ?? (Number(p.quantity) || 0);
 
   const options = products.map((p) => {
     let label = p.name;

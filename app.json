@@ -27,7 +27,6 @@
     },
     "plugins": [
       "expo-file-system",
-      "expo-print",
       "expo-sharing",
       "expo-image-picker"
     ]

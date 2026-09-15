@@ -1,5 +1,5 @@
 import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
-import { colors, font } from "../../theme";
+import { colors, font } from "../theme";
 
 // Native spinner. `variant` is accepted for API compatibility with the web
 // Spinner but the native implementation renders an ActivityIndicator.
