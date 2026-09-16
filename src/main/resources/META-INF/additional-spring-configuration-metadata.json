@@ -1,0 +1,23 @@
+{
+  "properties": [
+    {
+      "name": "management.endpoints.web.exposure.include",
+      "type": "java.lang.String",
+      "description": "Description for management.endpoints.web.exposure.include."
+    },
+    {
+      "name": "management.endpoint.health.show-details",
+      "type": "java.lang.String",
+      "description": "Description for management.endpoint.health.show-details."
+    },
+    {
+      "name": "management.endpoint.env.enabled",
+      "type": "java.lang.String",
+      "description": "Description for management.endpoint.env.enabled."
+    },
+    {
+      "name": "management.endpoint.metrics.enabled",
+      "type": "java.lang.String",
+      "description": "Description for management.endpoint.metrics.enabled."
+    }
+  ] }
