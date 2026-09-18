@@ -1,0 +1,13 @@
+
+> emlanetshop-mobile@1.0.0 web
+> expo start --web --port 19006
+
+env: load .env
+env: export EXPO_PUBLIC_API_BASE
+Starting project at C:\Users\emmil\dev\emlanetshop-mobile
+Starting Metro Bundler
+
+Waiting on http://localhost:19006
+
+Logs for your project will appear below.
+Web Bundled 86465ms index.js (1383 modules)
